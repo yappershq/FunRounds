@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Sharp.Modules.LocalizerManager.Shared;
+using Sharp.Modules.MenuManager.Shared;
 using Sharp.Shared;
 using WeaponLimit.Shared;
 
@@ -78,6 +79,8 @@ public sealed class FunRoundsPlugin : IModSharpModule
         // Resolve optional localization BEFORE modules' OAM runs so their command handlers see it.
         _bridge.LocalizerManager = _bridge.SharpModuleManager
             .GetOptionalSharpModuleInterface<ILocalizerManager>(ILocalizerManager.Identity)?.Instance;
+        _bridge.MenuManager = _bridge.SharpModuleManager
+            .GetOptionalSharpModuleInterface<IMenuManager>(IMenuManager.Identity)?.Instance;
         LoadLocaleFiles();
 
         // Resolve optional WeaponLimit integration.

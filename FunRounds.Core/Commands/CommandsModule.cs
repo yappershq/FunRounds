@@ -8,6 +8,7 @@ using FunRounds.Utils;
 using Microsoft.Extensions.Logging;
 using Sharp.Modules.AdminManager.Shared;
 using Sharp.Modules.CommandCenter.Shared;
+using Sharp.Modules.MenuManager.Shared;
 using Sharp.Shared.Objects;
 using Sharp.Shared.Types;
 using Sharp.Shared.Units;
@@ -113,9 +114,10 @@ internal sealed class CommandsModule : IModule
     {
         if (Denied(client)) return;
 
+        // No arg → open a picker menu of all registered rounds (admin clicks one to force it).
         if (cmd.ArgCount < 1)
         {
-            Loc.Chat(_bridge.LocalizerManager, client, "FunRounds_Usage_FunRound");
+            OpenRoundMenu(client);
             return;
         }
 
@@ -131,6 +133,43 @@ internal sealed class CommandsModule : IModule
         Loc.Chat(_bridge.LocalizerManager, client, "FunRounds_RoundQueued", shortName);
         _logger.LogInformation("[FunRounds] {Admin} queued round '{Round}' for next round.",
             client.Name, shortName);
+    }
+
+    // ── !funround (no arg) → picker menu ──────────────────────────────────
+
+    private void OpenRoundMenu(IGameClient client)
+    {
+        var lm = _bridge.LocalizerManager;
+
+        if (_bridge.MenuManager is not { } mm)
+        {
+            // No MenuManager — fall back to the chat usage/list.
+            Loc.Chat(lm, client, "FunRounds_Usage_FunRound");
+            return;
+        }
+
+        var rounds = _service.Registered;
+        if (rounds.Count == 0)
+        {
+            Loc.Chat(lm, client, "FunRounds_NoRoundsRegistered");
+            return;
+        }
+
+        var builder = Menu.Create().Title(Loc.Text(lm, client, "FunRounds_Menu_Title"));
+        foreach (var r in rounds)
+        {
+            var shortName = r.ShortName; // capture for the closure
+            var name      = r.Name;
+            builder = builder.Item(name, ctrl =>
+            {
+                _service.QueueForced(shortName);
+                Loc.Chat(_bridge.LocalizerManager, ctrl.Client, "FunRounds_RoundQueued", name);
+                _logger.LogInformation("[FunRounds] {Admin} queued round '{Round}' via menu.", ctrl.Client.Name, name);
+                ctrl.Exit();
+            });
+        }
+
+        mm.DisplayMenu(client, builder.ExitItem().Build());
     }
 
     // ── !funround_stop ────────────────────────────────────────────────────

@@ -28,5 +28,8 @@
   },
   "FunRounds_RoundQueued": {
     "en-US": "{{green}}[FunRounds]{{default}} Queued {{green}}{0}{{default}} for next round."
+  },
+  "FunRounds_Menu_Title": {
+    "en-US": "Fun Rounds — pick one"
   }
 }
