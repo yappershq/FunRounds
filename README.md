@@ -55,13 +55,13 @@ Chat triggers: `!`, `/`, or `.`; console prefix `ms_`.
 
 | Key | Default | Meaning |
 |-----|---------|---------|
-| `AutoRandomRound` | `false` | Pick a random registered round automatically each round. When `false`, rounds start only via `!funround`. |
+| `FunRoundChance` | `15` | Percent chance (0–100) that a round becomes a random fun round — the rest are normal rounds. `0` = auto fun rounds off (admins can still force one with `!funround`); `100` = every round. |
 | `AnnounceRound` | `true` | Broadcast the active round name to all players in chat when it starts. |
 | `AdminFlag` | `"funrounds:manage"` | AdminManager permission flag required to use `!funround` / `!funround_stop`. Accepts any string recognized by AdminManager (e.g. `"@css/generic"`). |
 
 ## 🔧 How it works
 
-`FunRounds.Core` hooks `round_poststart` to strip every alive player's weapons and give the current round's loadout. A `PlayerDispatchTraceAttack` pre-hook enforces damage rules: headshot-only rounds zero non-head damage; one-tap rounds set damage to 9999 on any hit. A per-tick `GameFrame` hook continuously forces `m_bIsScoped = false` during no-scope rounds. When `AutoRandomRound` is on, `OnRoundRestarted` (fired at round-restart) picks a random registered round before `round_poststart` fires.
+`FunRounds.Core` hooks `round_poststart` to strip every alive player's weapons and give the current round's loadout. A `PlayerDispatchTraceAttack` pre-hook enforces damage rules: headshot-only rounds zero non-head damage; one-tap rounds set damage to 9999 on any hit. A per-tick `GameFrame` hook continuously forces `m_bIsScoped = false` during no-scope rounds. At each round-restart `OnRoundRestarted` rolls `FunRoundChance`% — on a hit it picks a random registered round (applied at `round_poststart`), otherwise the round is normal.
 
 Round packs are separate modules — they resolve `IFunRoundService` in their `OnAllModulesLoaded` (after Core's `PostInit` publishes it) and call `Register()` for each round they provide.
 

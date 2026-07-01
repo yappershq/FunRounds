@@ -97,13 +97,15 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
     /// </summary>
     void IGameListener.OnRoundRestarted()
     {
-        if (!_config.Config.AutoRandomRound) return;
-        if (_service.Registered.Count == 0)  return;
+        var chance = _config.Config.FunRoundChance;
+        if (chance <= 0)                    return;   // auto fun rounds off (command-only)
+        if (_service.Registered.Count == 0) return;
+        if (Random.Shared.Next(100) >= chance) return; // rolled a normal round this time
 
         var pick = _service.PickRandom();
         if (pick is null) return;
 
-        _logger.LogInformation("[FunRounds] Auto-random selected '{Name}'.", pick.Name);
+        _logger.LogInformation("[FunRounds] Fun round rolled ({Chance}%): '{Name}'.", chance, pick.Name);
 
         if (_config.Config.AnnounceRound)
         {
@@ -123,11 +125,9 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
                 break;
 
             case "round_end":
-                // Only clear when NOT in auto mode — auto mode re-picks each round anyway.
-                if (!_config.Config.AutoRandomRound)
-                    _service.StopRound();
-                else
-                    _service.StopRound(); // clear; OnRoundRestarted re-picks next round
+                // Always clear Current — the next round rolls fresh in OnRoundRestarted, so
+                // without this a fun round would persist into the following (normal) round.
+                _service.StopRound();
                 break;
         }
     }

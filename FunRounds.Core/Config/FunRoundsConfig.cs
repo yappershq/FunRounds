@@ -6,10 +6,12 @@ namespace FunRounds.Config;
 public sealed class FunRoundsConfig
 {
     /// <summary>
-    /// When true, a random registered round is selected at the start of each round automatically.
-    /// When false, rounds are only started via the <c>funround</c> admin command.
+    /// Percent chance (0–100) that any given round becomes a random fun round. The rest are
+    /// normal rounds. 0 disables auto fun rounds entirely (admins can still force one via the
+    /// <c>funround</c> command); 100 makes every round a fun round. Default 15 — occasional fun,
+    /// mostly normal play.
     /// </summary>
-    public bool AutoRandomRound { get; set; } = false;
+    public int FunRoundChance { get; set; } = 15;
 
     /// <summary>
     /// When true, a chat message is sent to all players announcing the fun round name.
