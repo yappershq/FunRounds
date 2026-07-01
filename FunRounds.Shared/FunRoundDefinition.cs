@@ -42,6 +42,12 @@ public sealed class FunRoundDefinition
     public int Health { get; init; } = 100;
 
     /// <summary>
+    /// Relative weight used by the random-round picker.
+    /// Higher values make this round appear more often.  Must be &gt;= 1.  Default 1.
+    /// </summary>
+    public int Weight { get; init; } = 1;
+
+    /// <summary>
     /// Returns the ordered list of weapon classnames to give a player at round start.
     /// </summary>
     public IReadOnlyList<string> GetWeapons()

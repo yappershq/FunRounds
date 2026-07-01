@@ -16,6 +16,7 @@ public sealed class FunRoundBuilder
     private DamageMode _damageMode = DamageMode.Any;
     private bool    _noScope;
     private int     _health = 100;
+    private int     _weight = 1;
 
     public FunRoundBuilder WithName(string name)                { _name   = name;   return this; }
     public FunRoundBuilder WithShortName(string shortName)      { _short  = shortName; return this; }
@@ -29,6 +30,7 @@ public sealed class FunRoundBuilder
     public FunRoundBuilder WithOneTap()                         { _damageMode = DamageMode.OneTap;       return this; }
     public FunRoundBuilder WithNoScope()                        { _noScope = true; return this; }
     public FunRoundBuilder WithHealth(int hp)                   { _health  = hp;   return this; }
+    public FunRoundBuilder WithWeight(int weight)               { _weight  = weight; return this; }
 
     public FunRoundDefinition Build() => new()
     {
@@ -43,5 +45,6 @@ public sealed class FunRoundBuilder
         DamageMode      = _damageMode,
         NoScope         = _noScope,
         Health          = _health,
+        Weight          = _weight,
     };
 }

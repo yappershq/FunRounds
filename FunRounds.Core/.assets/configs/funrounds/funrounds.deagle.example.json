@@ -1,0 +1,49 @@
+{
+  "FunRoundChance": 15,
+  "AnnounceRound": true,
+  "AdminFlag": "funrounds:manage",
+  "Rounds": [
+    {
+      "Name": "Deagle",
+      "ShortName": "deagle",
+      "PrimaryWeapon": "weapon_deagle",
+      "SecondaryWeapon": null,
+      "Knife": true,
+      "Taser": false,
+      "HeGrenade": false,
+      "Decoy": false,
+      "DamageMode": "Any",
+      "NoScope": false,
+      "Health": 100,
+      "Weight": 3
+    },
+    {
+      "Name": "Deagle HeadShot",
+      "ShortName": "deagle_hs",
+      "PrimaryWeapon": "weapon_deagle",
+      "SecondaryWeapon": null,
+      "Knife": true,
+      "Taser": false,
+      "HeGrenade": false,
+      "Decoy": false,
+      "DamageMode": "HeadshotOnly",
+      "NoScope": false,
+      "Health": 100,
+      "Weight": 2
+    },
+    {
+      "Name": "Deagle One Tap",
+      "ShortName": "deagle_ot",
+      "PrimaryWeapon": "weapon_deagle",
+      "SecondaryWeapon": null,
+      "Knife": true,
+      "Taser": false,
+      "HeGrenade": false,
+      "Decoy": false,
+      "DamageMode": "OneTap",
+      "NoScope": false,
+      "Health": 100,
+      "Weight": 1
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "FunRoundChance": 15,
+  "AnnounceRound": true,
+  "AdminFlag": "funrounds:manage",
+  "Rounds": [
+    {
+      "Name": "AWP NoScope",
+      "ShortName": "awp_ns",
+      "PrimaryWeapon": "weapon_awp",
+      "SecondaryWeapon": null,
+      "Knife": true,
+      "Taser": false,
+      "HeGrenade": false,
+      "Decoy": false,
+      "DamageMode": "Any",
+      "NoScope": true,
+      "Health": 100,
+      "Weight": 2
+    },
+    {
+      "Name": "Scout",
+      "ShortName": "scout",
+      "PrimaryWeapon": "weapon_ssg08",
+      "SecondaryWeapon": null,
+      "Knife": true,
+      "Taser": false,
+      "HeGrenade": false,
+      "Decoy": false,
+      "DamageMode": "Any",
+      "NoScope": false,
+      "Health": 100,
+      "Weight": 2
+    },
+    {
+      "Name": "Scout HeadShot",
+      "ShortName": "scout_hs",
+      "PrimaryWeapon": "weapon_ssg08",
+      "SecondaryWeapon": null,
+      "Knife": true,
+      "Taser": false,
+      "HeGrenade": false,
+      "Decoy": false,
+      "DamageMode": "HeadshotOnly",
+      "NoScope": false,
+      "Health": 100,
+      "Weight": 1
+    },
+    {
+      "Name": "Scout NoScope",
+      "ShortName": "scout_ns",
+      "PrimaryWeapon": "weapon_ssg08",
+      "SecondaryWeapon": null,
+      "Knife": true,
+      "Taser": false,
+      "HeGrenade": false,
+      "Decoy": false,
+      "DamageMode": "Any",
+      "NoScope": true,
+      "Health": 100,
+      "Weight": 1
+    },
+    {
+      "Name": "Scout NoScope HeadShot",
+      "ShortName": "scout_ns_hs",
+      "PrimaryWeapon": "weapon_ssg08",
+      "SecondaryWeapon": null,
+      "Knife": true,
+      "Taser": false,
+      "HeGrenade": false,
+      "Decoy": false,
+      "DamageMode": "HeadshotOnly",
+      "NoScope": true,
+      "Health": 100,
+      "Weight": 1
+    }
+  ]
+}

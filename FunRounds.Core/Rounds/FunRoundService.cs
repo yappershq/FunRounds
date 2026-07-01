@@ -1,7 +1,9 @@
+using System;
 using System.Collections.Generic;
 using FunRounds.Plugins;
 using FunRounds.Shared;
 using Microsoft.Extensions.Logging;
+using Sharp.Shared.Units;
 
 namespace FunRounds.Rounds;
 
@@ -10,9 +12,15 @@ namespace FunRounds.Rounds;
 /// </summary>
 internal sealed class FunRoundService : IFunRoundService, IModule
 {
-    private readonly ILogger<FunRoundService>  _logger;
-    private readonly List<FunRoundDefinition>  _rounds = [];
-    private readonly Dictionary<string, FunRoundDefinition> _byShort = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ILogger<FunRoundService> _logger;
+    private readonly List<FunRoundDefinition> _rounds = [];
+    private readonly Dictionary<string, FunRoundDefinition> _byShort
+        = new(StringComparer.OrdinalIgnoreCase);
+
+    // Optional per-round code callbacks (ShortName → delegates).
+    private readonly Dictionary<string, (Action<IReadOnlyList<PlayerSlot>>? onApply,
+                                          Action<IReadOnlyList<PlayerSlot>>? onRevert)> _callbacks
+        = new(StringComparer.OrdinalIgnoreCase);
 
     private FunRoundDefinition? _current;
 
@@ -28,6 +36,11 @@ internal sealed class FunRoundService : IFunRoundService, IModule
     // ── IFunRoundService ───────────────────────────────────────────────────
 
     public void Register(FunRoundDefinition round)
+        => Register(round, null, null);
+
+    public void Register(FunRoundDefinition round,
+                         Action<IReadOnlyList<PlayerSlot>>? onApply,
+                         Action<IReadOnlyList<PlayerSlot>>? onRevert)
     {
         if (_byShort.ContainsKey(round.ShortName))
         {
@@ -37,6 +50,8 @@ internal sealed class FunRoundService : IFunRoundService, IModule
         }
         _rounds.Add(round);
         _byShort[round.ShortName] = round;
+        if (onApply is not null || onRevert is not null)
+            _callbacks[round.ShortName] = (onApply, onRevert);
         _logger.LogDebug("[FunRounds] Registered round '{Name}' ({Short}).", round.Name, round.ShortName);
     }
 
@@ -60,21 +75,48 @@ internal sealed class FunRoundService : IFunRoundService, IModule
     }
 
     /// <summary>
-    /// Picks a random registered round and sets it as current.
-    /// Returns null when no rounds are registered.
+    /// Picks a random registered round weighted by <see cref="FunRoundDefinition.Weight"/>
+    /// and sets it as current.  Returns null when no rounds are registered.
     /// </summary>
     public FunRoundDefinition? PickRandom()
     {
         if (_rounds.Count == 0) return null;
-        var pick = _rounds[Random.Shared.Next(_rounds.Count)];
+
+        var totalWeight = 0;
+        foreach (var r in _rounds) totalWeight += Math.Max(1, r.Weight);
+
+        var roll = Random.Shared.Next(totalWeight);
+        var cumulative = 0;
+        FunRoundDefinition? pick = null;
+        foreach (var r in _rounds)
+        {
+            cumulative += Math.Max(1, r.Weight);
+            if (roll < cumulative)
+            {
+                pick = r;
+                break;
+            }
+        }
+
+        pick ??= _rounds[^1]; // safety fallback (shouldn't happen)
         _current = pick;
         return pick;
     }
 
+    /// <summary>
+    /// Returns the code callbacks registered for the current round, or (null, null) if none.
+    /// </summary>
+    internal (Action<IReadOnlyList<PlayerSlot>>? onApply, Action<IReadOnlyList<PlayerSlot>>? onRevert)
+        GetCurrentCallbacks()
+    {
+        if (_current is null) return (null, null);
+        return _callbacks.TryGetValue(_current.ShortName, out var cbs) ? cbs : (null, null);
+    }
+
     // ── IModule lifecycle ──────────────────────────────────────────────────
 
-    public bool Init()                   => true;
-    public void OnPostInit()             { }
-    public void OnAllSharpModulesLoaded(){ }
-    public void Shutdown()               { _current = null; }
+    public bool Init()                    => true;
+    public void OnPostInit()              { }
+    public void OnAllSharpModulesLoaded() { }
+    public void Shutdown()                { _current = null; }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using FunRounds.Config;
 using FunRounds.Plugins;
 using FunRounds.Shared;
@@ -11,14 +12,16 @@ using Sharp.Shared.HookParams;
 using Sharp.Shared.Objects;
 using Sharp.Shared.Listeners;
 using Sharp.Shared.Types;
+using Sharp.Shared.Units;
 
 namespace FunRounds.Rounds;
 
 /// <summary>
 /// Handles the round lifecycle:
 ///   OnRoundRestarted (IGameListener) — if auto-random, select a random fun round.
-///   round_poststart  (IEventListener) — strip + arm + set health on every alive player.
-///   round_end        (IEventListener) — clear Current for normal play.
+///   round_poststart  (IEventListener) — strip + arm + set health on every alive player,
+///                                       then invoke the round's onApply delegate if present.
+///   round_end        (IEventListener) — invoke onRevert delegate if present, then clear Current.
 ///   PlayerDispatchTraceAttack pre-hook — enforce HeadshotOnly / OneTap damage rules.
 ///   GameFrame hook (pre) — force-unscope every alive player during a NoScope round, every tick.
 /// </summary>
@@ -125,6 +128,7 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
                 break;
 
             case "round_end":
+                InvokeRevert();
                 // Always clear Current — the next round rolls fresh in OnRoundRestarted, so
                 // without this a fun round would persist into the following (normal) round.
                 _service.StopRound();
@@ -139,9 +143,12 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
         var round = _service.Current;
         if (round is null) return;
 
-        var weapons  = round.GetWeapons();
-        var applyHp  = round.Health != 100;
-        var count    = 0;
+        var weapons = round.GetWeapons();
+        var applyHp = round.Health != 100;
+        var count   = 0;
+
+        // Collect alive player slots for onApply delegate.
+        var aliveSlots = new List<PlayerSlot>();
 
         foreach (var client in _bridge.ClientManager.GetGameClients(inGame: true))
         {
@@ -165,10 +172,53 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
             if (applyHp)
                 pawn.Health = round.Health;
 
+            aliveSlots.Add(ctrl.PlayerSlot);
             count++;
         }
 
         _logger.LogInformation("[FunRounds] Applied '{Name}' to {Count} player(s).", round.Name, count);
+
+        // Invoke optional code-round onApply delegate.
+        var (onApply, _) = _service.GetCurrentCallbacks();
+        if (onApply is not null)
+        {
+            try   { onApply(aliveSlots); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[FunRounds] onApply threw for round '{Name}'.", round.Name);
+            }
+        }
+    }
+
+    private void InvokeRevert()
+    {
+        var round = _service.Current;
+        if (round is null) return;
+
+        var (_, onRevert) = _service.GetCurrentCallbacks();
+        if (onRevert is null) return;
+
+        // Collect alive player slots for onRevert delegate.
+        var aliveSlots = new List<PlayerSlot>();
+        foreach (var client in _bridge.ClientManager.GetGameClients(inGame: true))
+        {
+            if (client.IsFakeClient) continue;
+            if (!client.IsInGame)    continue;
+
+            var controller = client.GetPlayerController();
+            if (controller is not { } ctrl || !ctrl.IsValid()) continue;
+
+            var pawn = ctrl.GetPlayerPawn();
+            if (pawn is not { IsAlive: true }) continue;
+
+            aliveSlots.Add(ctrl.PlayerSlot);
+        }
+
+        try   { onRevert(aliveSlots); }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[FunRounds] onRevert threw for round '{Name}'.", round.Name);
+        }
     }
 
     // ── Damage hook ───────────────────────────────────────────────────────
