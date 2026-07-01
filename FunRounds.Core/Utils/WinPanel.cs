@@ -18,7 +18,8 @@ internal static class WinPanel
     /// text up into the visible funfact area of the panel.
     /// </summary>
     public static string Format(string text, string color)
-        => $"<font class='fontSize-xxl fontWeight-Bold stratum-bold-mono' color='{color}'>{text}</font><br><br><br><br><br><br>";
+        // fontSize-l (not -xxl) so longer round names ("Scout NoScope HeadShot") don't overflow.
+        => $"<font class='fontSize-l fontWeight-Bold stratum-bold-mono' color='{color}'>{text}</font><br><br><br><br><br>";
 
     /// <summary>
     /// Show the win-panel to every in-game player (HTML built per-client via <paramref name="htmlFor"/>
