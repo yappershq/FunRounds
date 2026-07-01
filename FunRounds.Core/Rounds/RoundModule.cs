@@ -23,7 +23,8 @@ namespace FunRounds.Rounds;
 ///                                       then invoke the round's onApply delegate if present.
 ///   round_end        (IEventListener) — invoke onRevert delegate if present, then clear Current.
 ///   PlayerDispatchTraceAttack pre-hook — enforce HeadshotOnly / OneTap damage rules.
-///   GameFrame hook (pre) — force-unscope every alive player during a NoScope round, every tick.
+///   PlayerPreThink forward — NoScope enforcement + DropOnMiss weapon drop.
+///   bullet_impact / player_hurt — tick-scoped hit/miss counters for DropOnMiss.
 /// </summary>
 internal sealed class RoundModule : IModule, IEventListener, IGameListener
 {
@@ -37,10 +38,28 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
                           HookReturnValue<long>,
                           HookReturnValue<long>> _traceAttackPre;
 
-    private readonly Action<bool, bool, bool> _gameFramePre;
+    private readonly Action<IPlayerThinkForwardParams> _playerPreThink;
+
+    private readonly Action<IPlayerSpawnForwardParams> _playerSpawnPost;
+
+    // Weapon classnames that can scope — same set as Bara/NoScope's SetNoScope().
+    private static readonly HashSet<string> ScopedWeapons = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "weapon_ssg08", "weapon_awp", "weapon_aug", "weapon_sg556", "weapon_g3sg1", "weapon_scar20",
+    };
 
     // WeaponLimit override tracking — true when we called SetOverride this round.
     private bool _wlOverridden;
+
+    // Pre-round ConVar values, captured so a round's overrides (e.g. bhop) can be reverted exactly.
+    private Dictionary<string, string>? _conVarRevert;
+
+    // DropOnMiss tick-scoped counters: bullet_impact always fires per shot (hit or miss);
+    // player_hurt only fires on an actual hit. impacts > hits this tick == a shot missed.
+    // Reset per-player at the end of that player's own PreThink (see OnPlayerPreThink).
+    private static readonly byte MaxSlots = PlayerSlot.MaxPlayerCount.AsPrimitive();
+    private readonly int[] _impactsThisTick = new int[MaxSlots];
+    private readonly int[] _hitsThisTick    = new int[MaxSlots];
 
     // ── IEventListener ────────────────────────────────────────────────────
     int IEventListener.ListenerVersion  => IEventListener.ApiVersion;
@@ -61,8 +80,9 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
         _config  = config;
         _service = service;
 
-        _traceAttackPre = OnTraceAttackPre;
-        _gameFramePre   = OnGameFramePre;
+        _traceAttackPre  = OnTraceAttackPre;
+        _playerPreThink  = OnPlayerPreThink;
+        _playerSpawnPost = OnPlayerSpawnPost;
     }
 
     // ── IModule lifecycle ──────────────────────────────────────────────────
@@ -73,13 +93,21 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
     {
         _bridge.EventManager.HookEvent("round_poststart");
         _bridge.EventManager.HookEvent("round_end");
+        _bridge.EventManager.HookEvent("grenade_thrown");
+        _bridge.EventManager.HookEvent("bullet_impact");
+        _bridge.EventManager.HookEvent("player_hurt");
         _bridge.EventManager.InstallEventListener(this);
 
         _bridge.HookManager.PlayerDispatchTraceAttack.InstallHookPre(_traceAttackPre);
 
-        // Per-tick force-unscope while a NoScope round is active — installed for the
-        // lifetime of the plugin (cheap no-op check when no NoScope round is current).
-        _bridge.ModSharp.InstallGameFrameHook(_gameFramePre, null);
+        // Belt-and-suspenders vs round_poststart: give the current round's loadout on every
+        // individual spawn too (late joiners, mid-round respawns, and any case where a player's
+        // pawn isn't alive yet when round_poststart's alive-player snapshot runs).
+        _bridge.HookManager.PlayerSpawnPost.InstallForward(_playerSpawnPost);
+
+        // Per-player NoScope enforcement — installed for the lifetime of the plugin (cheap no-op
+        // check when no NoScope round is current). Matches Bara/NoScope's SDKHook_PreThink.
+        _bridge.HookManager.PlayerPreThink.InstallForward(_playerPreThink);
 
         _bridge.ModSharp.InstallGameListener(this);
     }
@@ -90,7 +118,8 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
     {
         _bridge.EventManager.RemoveEventListener(this);
         _bridge.HookManager.PlayerDispatchTraceAttack.RemoveHookPre(_traceAttackPre);
-        _bridge.ModSharp.RemoveGameFrameHook(_gameFramePre, null);
+        _bridge.HookManager.PlayerSpawnPost.RemoveForward(_playerSpawnPost);
+        _bridge.HookManager.PlayerPreThink.RemoveForward(_playerPreThink);
         _bridge.ModSharp.RemoveGameListener(this);
     }
 
@@ -112,6 +141,7 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
             if (_config.Config.AnnounceRound)
                 Loc.ChatAll(_bridge.LocalizerManager, _bridge.ClientManager, "FunRounds_RoundSelected", f.Name);
             SetWeaponLimitOverride(f);
+            ApplyRoundConVars(f);
             return;
         }
 
@@ -132,6 +162,7 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
         }
 
         SetWeaponLimitOverride(pick);
+        ApplyRoundConVars(pick);
     }
 
     /// <summary>
@@ -143,6 +174,39 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
         if (_wlOverridden || _bridge.WeaponLimit is not { } wl) return;
         wl.SetOverride(round.GetWeapons());
         _wlOverridden = true;
+    }
+
+    /// <summary>
+    /// Applies a round's ConVar overrides (e.g. bhop), capturing each cvar's current value first
+    /// so <see cref="RevertRoundConVars"/> can restore it exactly at round end.
+    /// </summary>
+    private void ApplyRoundConVars(FunRoundDefinition round)
+    {
+        if (round.ConVars.Count == 0) return;
+
+        _conVarRevert = new Dictionary<string, string>();
+        foreach (var (name, value) in round.ConVars)
+        {
+            var cvar = _bridge.ConVarManager.FindConVar(name);
+            if (cvar is null)
+            {
+                _logger.LogWarning("[FunRounds] ConVar '{Name}' not found — skipping.", name);
+                continue;
+            }
+
+            _conVarRevert[name] = cvar.GetString();
+            cvar.SetString(value);
+        }
+    }
+
+    private void RevertRoundConVars()
+    {
+        if (_conVarRevert is null) return;
+
+        foreach (var (name, value) in _conVarRevert)
+            _bridge.ConVarManager.FindConVar(name)?.SetString(value);
+
+        _conVarRevert = null;
     }
 
     // ── IEventListener — FireGameEvent ────────────────────────────────────
@@ -164,23 +228,132 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
                     _bridge.WeaponLimit?.ClearOverride();
                     _wlOverridden = false;
                 }
+                RevertRoundConVars();
                 // Always clear Current — the next round rolls fresh in OnRoundRestarted, so
                 // without this a fun round would persist into the following (normal) round.
                 _service.StopRound();
                 break;
+
+            case "grenade_thrown":
+                if (@event is IEventGrenadeThrown thrown)
+                    OnGrenadeThrown(thrown);
+                break;
+
+            case "bullet_impact":
+                OnBulletImpact(@event);
+                break;
+
+            case "player_hurt":
+                if (@event is IEventPlayerHurt hurt)
+                    OnPlayerHurt(hurt);
+                break;
         }
     }
 
+    // ── DropOnMiss ────────────────────────────────────────────────────────
+
+    private void OnBulletImpact(IGameEvent @event)
+    {
+        if (_service.Current is not { DropOnMiss: true }) return;
+
+        var userId = new UserID((ushort) @event.GetInt("userid"));
+        var client = _bridge.ClientManager.GetGameClient(userId);
+        if (client is null) return;
+
+        _impactsThisTick[client.Slot.AsPrimitive()]++;
+    }
+
+    private void OnPlayerHurt(IEventPlayerHurt @event)
+    {
+        if (_service.Current is not { DropOnMiss: true }) return;
+
+        var attacker = @event.KillerController;
+        var victim   = @event.VictimController;
+        if (attacker is null || victim is null || attacker.PlayerSlot == victim.PlayerSlot) return;
+
+        _hitsThisTick[attacker.PlayerSlot.AsPrimitive()]++;
+    }
+
+    /// <summary>
+    /// Re-gives the thrown grenade so a HE+Knife/Decoy War round never runs dry mid-life — matches
+    /// the round's own grenade set (HeGrenade → weapon_hegrenade, Decoy → weapon_decoy); ignores
+    /// throws of anything else (e.g. a player who somehow still has a flash from a prior round).
+    /// </summary>
+    private void OnGrenadeThrown(IEventGrenadeThrown @event)
+    {
+        var round = _service.Current;
+        if (round is null) return;
+
+        var isRoundGrenade = @event.Grenade switch
+        {
+            "hegrenade" => round.HeGrenade,
+            "decoy"     => round.Decoy,
+            _           => false,
+        };
+        if (!isRoundGrenade) return;
+
+        if (@event.Pawn is not { IsAlive: true } pawn || !pawn.IsValid()) return;
+
+        // Defer — re-giving on the same tick as the throw can race the engine's own weapon-switch.
+        _bridge.ModSharp.InvokeFrameAction(() =>
+        {
+            if (pawn.IsValid() && pawn.IsAlive && _service.Current == round)
+                pawn.GiveNamedItem("weapon_" + @event.Grenade);
+        });
+    }
+
     // ── Round application ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Gives round weapons directly. Fallback path ONLY — used when WeaponLimit isn't installed.
+    /// When WeaponLimit IS present, its own PlayerSpawnPost hook gives the override set on every
+    /// spawn (see WeaponLimitModule.GiveAndRefill); FunRounds must not also strip/give, since that
+    /// duplicated pass raced round_poststart's one-shot "alive right now" snapshot and could leave
+    /// a player weaponless if their pawn wasn't alive yet at that exact instant.
+    /// </summary>
+    private static void GiveWeaponsDirect(IPlayerPawn pawn, IReadOnlyList<string> weapons)
+    {
+        pawn.RemoveAllItems(removeSuit: false);
+        foreach (var weapon in weapons)
+            pawn.GiveNamedItem(weapon);
+    }
+
+    /// <summary>
+    /// Applies the current round's health override to a single freshly-spawned pawn (and, when
+    /// WeaponLimit isn't installed, the weapons too). Covers late joiners, mid-round respawns, and
+    /// any spawn that happens after round_poststart's snapshot already ran.
+    /// </summary>
+    private void OnPlayerSpawnPost(IPlayerSpawnForwardParams @params)
+    {
+        var round = _service.Current;
+        if (round is null) return;
+
+        if (@params.Pawn is not { } basePawn || !basePawn.IsValid() || !basePawn.IsAlive) return;
+
+        // Defer to next frame — same reasoning as WeaponLimit: removing weapons mid-spawn-forward
+        // races the engine's own equip path.
+        _bridge.ModSharp.InvokeFrameAction(() =>
+        {
+            if (!basePawn.IsValid() || !basePawn.IsAlive) return;
+            if (basePawn.AsPlayerPawn() is not { } pawn) return;
+            if (_service.Current != round) return; // round already changed/ended
+
+            if (_bridge.WeaponLimit is null)
+                GiveWeaponsDirect(pawn, round.GetWeapons());
+
+            if (round.Health != 100)
+                pawn.Health = round.Health;
+        });
+    }
 
     private void ApplyCurrentRound()
     {
         var round = _service.Current;
         if (round is null) return;
 
-        var weapons = round.GetWeapons();
-        var applyHp = round.Health != 100;
-        var count   = 0;
+        var weapons       = round.GetWeapons();
+        var giveDirectly  = _bridge.WeaponLimit is null;
+        var count         = 0;
 
         // Collect alive player slots for onApply delegate.
         var aliveSlots = new List<PlayerSlot>();
@@ -196,15 +369,10 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
             var pawn = ctrl.GetPlayerPawn();
             if (pawn is not { IsAlive: true }) continue;
 
-            // Strip all current weapons (keep suit for armor logic)
-            pawn.RemoveAllItems(removeSuit: false);
+            if (giveDirectly)
+                GiveWeaponsDirect(pawn, weapons);
 
-            // Give each weapon defined for this round
-            foreach (var weapon in weapons)
-                pawn.GiveNamedItem(weapon);
-
-            // Override health if the round specifies a non-default value
-            if (applyHp)
+            if (round.Health != 100)
                 pawn.Health = round.Health;
 
             aliveSlots.Add(ctrl.PlayerSlot);
@@ -293,29 +461,42 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
         return current;
     }
 
-    // ── NoScope enforcement (per-tick force-unscope) ────────────────────────
+    // ── Per-tick enforcement (NoScope + DropOnMiss) ──────────────────────────
 
     /// <summary>
-    /// Runs every server tick. When a NoScope round is active, forces every alive
-    /// player out of scope (m_bIsScoped = false) so zoom is unusable, not merely penalized.
+    /// Fires every PreThink for every alive pawn (matches Bara/NoScope's SDKHook_PreThink).
+    /// Handles two independent round mechanics, each a no-op when the current round doesn't use it:
+    ///   NoScope    — pins the active weapon's secondary-attack cooldown in the future, so the
+    ///                scope action itself never fires (the engine's own attack-rate gate blocks
+    ///                it) — cheaper and more reliable than fighting client-side scope state after
+    ///                the fact (m_bIsScoped resets one tick too late, causing a visible flash).
+    ///   DropOnMiss — compares this tick's bullet_impact vs player_hurt counts for this player;
+    ///                more impacts than hits means a shot missed, so drop the active weapon.
     /// </summary>
-    private void OnGameFramePre(bool simulating, bool firstTick, bool lastTick)
+    private void OnPlayerPreThink(IPlayerThinkForwardParams @params)
     {
         var round = _service.Current;
-        if (round is null || !round.NoScope) return;
+        if (round is null) return;
 
-        foreach (var client in _bridge.ClientManager.GetGameClients(inGame: true))
+        if (@params.Pawn is not { IsAlive: true } pawn || !pawn.IsValid()) return;
+
+        var weapon = pawn.GetActiveWeapon();
+
+        if (round.NoScope && weapon is { IsValidEntity: true })
         {
-            if (client.IsFakeClient) continue;
+            var name = weapon.GetWeaponClassname();
+            if (!string.IsNullOrEmpty(name) && ScopedWeapons.Contains(name))
+                weapon.NextSecondaryAttackTick = _bridge.ModSharp.GetGlobals().TickCount + 128; // ~2s at 64 tick
+        }
 
-            var controller = client.GetPlayerController();
-            if (controller is not { } ctrl || !ctrl.IsValid()) continue;
+        if (round.DropOnMiss && pawn.GetController() is { } controller)
+        {
+            var slot = controller.PlayerSlot.AsPrimitive();
+            if (_impactsThisTick[slot] > _hitsThisTick[slot] && weapon is { IsValidEntity: true } && !weapon.IsKnife)
+                pawn.DropWeapon(weapon);
 
-            var pawn = ctrl.GetPlayerPawn();
-            if (pawn is not { IsAlive: true } || !pawn.IsValid()) continue;
-
-            if (pawn.GetNetVar<bool>("m_bIsScoped"))
-                pawn.SetNetVar("m_bIsScoped", false);
+            _impactsThisTick[slot] = 0;
+            _hitsThisTick[slot]    = 0;
         }
     }
 }

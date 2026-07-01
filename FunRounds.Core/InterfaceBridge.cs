@@ -23,6 +23,7 @@ internal sealed class InterfaceBridge
     internal IClientManager ClientManager { get; }
     internal IHookManager   HookManager   { get; }
     internal IEventManager  EventManager  { get; }
+    internal IConVarManager ConVarManager { get; }
 
     // === Services ===
     internal IModSharp           ModSharp           { get; }
@@ -54,6 +55,7 @@ internal sealed class InterfaceBridge
         ClientManager = sharedSystem.GetClientManager();
         HookManager   = sharedSystem.GetHookManager();
         EventManager  = sharedSystem.GetEventManager();
+        ConVarManager = sharedSystem.GetConVarManager();
 
         ModSharp           = sharedSystem.GetModSharp();
         LoggerFactory      = loggerFactory;

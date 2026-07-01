@@ -14,8 +14,57 @@
       "Decoy": false,
       "DamageMode": "Any",
       "NoScope": true,
+      "ConVars": {},
       "Health": 100,
-      "Weight": 5
+      "Weight": 17
+    },
+    {
+      "Name": "AWP Bhop NoScope",
+      "ShortName": "awp_bhop_ns",
+      "PrimaryWeapon": "weapon_awp",
+      "SecondaryWeapon": null,
+      "Knife": true,
+      "Taser": false,
+      "HeGrenade": false,
+      "Decoy": false,
+      "DamageMode": "Any",
+      "NoScope": true,
+      "ConVars": {
+        "sv_autobunnyhopping": "1",
+        "sv_airaccelerate": "200"
+      },
+      "Health": 100,
+      "Weight": 6
+    },
+    {
+      "Name": "AWP NoScope Drop",
+      "ShortName": "awp_ns_drop",
+      "PrimaryWeapon": "weapon_awp",
+      "SecondaryWeapon": null,
+      "Knife": true,
+      "Taser": false,
+      "HeGrenade": false,
+      "Decoy": false,
+      "DamageMode": "Any",
+      "NoScope": true,
+      "DropOnMiss": true,
+      "ConVars": {},
+      "Health": 100,
+      "Weight": 1
+    },
+    {
+      "Name": "Deagle",
+      "ShortName": "deagle",
+      "PrimaryWeapon": null,
+      "SecondaryWeapon": "weapon_deagle",
+      "Knife": true,
+      "Taser": false,
+      "HeGrenade": false,
+      "Decoy": false,
+      "DamageMode": "Any",
+      "NoScope": false,
+      "Health": 100,
+      "Weight": 3
     },
     {
       "Name": "Scout",
@@ -29,7 +78,35 @@
       "DamageMode": "Any",
       "NoScope": false,
       "Health": 100,
-      "Weight": 1
+      "Weight": 3
+    },
+    {
+      "Name": "Knife Only",
+      "ShortName": "knife",
+      "PrimaryWeapon": null,
+      "SecondaryWeapon": null,
+      "Knife": true,
+      "Taser": false,
+      "HeGrenade": false,
+      "Decoy": false,
+      "DamageMode": "Any",
+      "NoScope": false,
+      "Health": 100,
+      "Weight": 3
+    },
+    {
+      "Name": "Deagle HeadShot",
+      "ShortName": "deagle_hs",
+      "PrimaryWeapon": null,
+      "SecondaryWeapon": "weapon_deagle",
+      "Knife": true,
+      "Taser": false,
+      "HeGrenade": false,
+      "Decoy": false,
+      "DamageMode": "HeadshotOnly",
+      "NoScope": false,
+      "Health": 100,
+      "Weight": 3
     },
     {
       "Name": "Scout HeadShot",
@@ -43,7 +120,7 @@
       "DamageMode": "HeadshotOnly",
       "NoScope": false,
       "Health": 100,
-      "Weight": 1
+      "Weight": 3
     },
     {
       "Name": "Scout NoScope",
@@ -57,7 +134,7 @@
       "DamageMode": "Any",
       "NoScope": true,
       "Health": 100,
-      "Weight": 1
+      "Weight": 3
     },
     {
       "Name": "Scout NoScope HeadShot",
@@ -70,6 +147,93 @@
       "Decoy": false,
       "DamageMode": "HeadshotOnly",
       "NoScope": true,
+      "Health": 100,
+      "Weight": 3
+    },
+    {
+      "Name": "AK-47 One Tap",
+      "ShortName": "ak47_hs",
+      "PrimaryWeapon": "weapon_ak47",
+      "SecondaryWeapon": null,
+      "Knife": true,
+      "Taser": false,
+      "HeGrenade": false,
+      "Decoy": false,
+      "DamageMode": "OneTap",
+      "NoScope": false,
+      "Health": 100,
+      "Weight": 1
+    },
+    {
+      "Name": "Deagle One Tap",
+      "ShortName": "deagle_ot",
+      "PrimaryWeapon": null,
+      "SecondaryWeapon": "weapon_deagle",
+      "Knife": true,
+      "Taser": false,
+      "HeGrenade": false,
+      "Decoy": false,
+      "DamageMode": "OneTap",
+      "NoScope": false,
+      "Health": 100,
+      "Weight": 1
+    },
+    {
+      "Name": "M4A1-S One Tap",
+      "ShortName": "m4a1_hs",
+      "PrimaryWeapon": "weapon_m4a1_silencer",
+      "SecondaryWeapon": null,
+      "Knife": true,
+      "Taser": false,
+      "HeGrenade": false,
+      "Decoy": false,
+      "DamageMode": "OneTap",
+      "NoScope": false,
+      "Health": 100,
+      "Weight": 1
+    },
+    {
+      "Name": "Taser Only",
+      "ShortName": "taser",
+      "PrimaryWeapon": null,
+      "SecondaryWeapon": null,
+      "Knife": false,
+      "Taser": true,
+      "HeGrenade": false,
+      "Decoy": false,
+      "DamageMode": "Any",
+      "NoScope": false,
+      "ConVars": {
+        "mp_taser_recharge_time": "3"
+      },
+      "Health": 100,
+      "Weight": 1
+    },
+    {
+      "Name": "HE + Knife",
+      "ShortName": "henade",
+      "PrimaryWeapon": null,
+      "SecondaryWeapon": null,
+      "Knife": true,
+      "Taser": false,
+      "HeGrenade": true,
+      "Decoy": false,
+      "DamageMode": "Any",
+      "NoScope": false,
+      "Health": 100,
+      "Weight": 1
+    },
+    {
+      "Name": "Decoy War",
+      "ShortName": "decoy",
+      "PrimaryWeapon": null,
+      "SecondaryWeapon": null,
+      "Knife": true,
+      "Taser": false,
+      "HeGrenade": false,
+      "Decoy": true,
+      "DamageMode": "Any",
+      "NoScope": false,
       "Health": 100,
       "Weight": 1
     }

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace FunRounds.Shared;
 
 /// <summary>
@@ -15,6 +17,8 @@ public sealed class FunRoundBuilder
     private bool    _decoy;
     private DamageMode _damageMode = DamageMode.Any;
     private bool    _noScope;
+    private bool    _dropOnMiss;
+    private readonly Dictionary<string, string> _conVars = new();
     private int     _health = 100;
     private int     _weight = 1;
 
@@ -29,6 +33,8 @@ public sealed class FunRoundBuilder
     public FunRoundBuilder WithHeadshotOnly()                   { _damageMode = DamageMode.HeadshotOnly; return this; }
     public FunRoundBuilder WithOneTap()                         { _damageMode = DamageMode.OneTap;       return this; }
     public FunRoundBuilder WithNoScope()                        { _noScope = true; return this; }
+    public FunRoundBuilder WithDropOnMiss()                     { _dropOnMiss = true; return this; }
+    public FunRoundBuilder WithConVar(string name, string value){ _conVars[name] = value; return this; }
     public FunRoundBuilder WithHealth(int hp)                   { _health  = hp;   return this; }
     public FunRoundBuilder WithWeight(int weight)               { _weight  = weight; return this; }
 
@@ -44,6 +50,8 @@ public sealed class FunRoundBuilder
         Decoy           = _decoy,
         DamageMode      = _damageMode,
         NoScope         = _noScope,
+        DropOnMiss      = _dropOnMiss,
+        ConVars         = _conVars,
         Health          = _health,
         Weight          = _weight,
     };

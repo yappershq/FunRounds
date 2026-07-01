@@ -79,6 +79,15 @@ public sealed class RoundConfigEntry
     /// <summary>If true, scoped shots are suppressed (damage zeroed).</summary>
     public bool NoScope { get; set; }
 
+    /// <summary>If true, a shot that hits nothing drops the shooter's active weapon.</summary>
+    public bool DropOnMiss { get; set; }
+
+    /// <summary>
+    /// Optional ConVar overrides applied for the round's duration and reverted at round end
+    /// (e.g. {"sv_autobunnyhopping": "1", "sv_airaccelerate": "200"} for a bhop round).
+    /// </summary>
+    public Dictionary<string, string> ConVars { get; set; } = new();
+
     /// <summary>Starting health for players this round.</summary>
     public int Health { get; set; } = 100;
 
@@ -100,6 +109,8 @@ public sealed class RoundConfigEntry
         Decoy           = Decoy,
         DamageMode      = DamageMode,
         NoScope         = NoScope,
+        DropOnMiss      = DropOnMiss,
+        ConVars         = ConVars,
         Health          = Health,
         Weight          = Weight,
     };

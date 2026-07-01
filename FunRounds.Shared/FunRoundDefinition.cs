@@ -38,6 +38,17 @@ public sealed class FunRoundDefinition
     /// <summary>If true, scoped shots are suppressed (damage zeroed).</summary>
     public bool NoScope { get; init; }
 
+    /// <summary>If true, a shot that hits nothing (bullet_impact with no matching player_hurt
+    /// this tick) drops the shooter's active weapon.</summary>
+    public bool DropOnMiss { get; init; }
+
+    /// <summary>
+    /// Optional ConVar overrides applied for the duration of this round (e.g. sv_autobunnyhopping,
+    /// sv_airaccelerate for a bhop round). Each cvar's pre-round value is captured and restored
+    /// when the round ends.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> ConVars { get; init; } = new Dictionary<string, string>();
+
     /// <summary>Starting health for players this round.</summary>
     public int Health { get; init; } = 100;
 
