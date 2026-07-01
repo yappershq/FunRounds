@@ -100,6 +100,17 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
     /// </summary>
     void IGameListener.OnRoundRestarted()
     {
+        // An admin-forced round (via command/console) takes priority over the random-chance roll.
+        var forced = _service.DequeueForced();
+        if (forced is not null && _service.StartRound(forced))
+        {
+            var f = _service.Current!;
+            _logger.LogInformation("[FunRounds] Forced fun round: '{Name}'.", f.Name);
+            if (_config.Config.AnnounceRound)
+                Loc.ChatAll(_bridge.LocalizerManager, _bridge.ClientManager, "FunRounds_RoundSelected", f.Name);
+            return;
+        }
+
         var chance = _config.Config.FunRoundChance;
         if (chance <= 0)                    return;   // auto fun rounds off (command-only)
         if (_service.Registered.Count == 0) return;

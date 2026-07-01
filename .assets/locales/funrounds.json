@@ -25,5 +25,8 @@
   },
   "FunRounds_RoundReveal": {
     "en-US": "⚡ FUN ROUND ⚡<br>{0}"
+  },
+  "FunRounds_RoundQueued": {
+    "en-US": "{{green}}[FunRounds]{{default}} Queued {{green}}{0}{{default}} for next round."
   }
 }

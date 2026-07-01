@@ -23,8 +23,32 @@ internal sealed class FunRoundService : IFunRoundService, IModule
         = new(StringComparer.OrdinalIgnoreCase);
 
     private FunRoundDefinition? _current;
+    private string?             _pendingForced; // a round queued (by command) to run NEXT round
 
     public FunRoundDefinition? Current => _current;
+
+    /// <summary>Whether a given short name is a registered round.</summary>
+    public bool Has(string shortName) => _byShort.ContainsKey(shortName);
+
+    /// <summary>
+    /// Queue a round to start on the NEXT round (overrides the random-chance roll). Returns false
+    /// if the short name isn't registered. Used by the admin force commands — a fun round can't be
+    /// applied mid-round (loadout happens at round_poststart), so forcing always targets next round.
+    /// </summary>
+    public bool QueueForced(string shortName)
+    {
+        if (!_byShort.ContainsKey(shortName)) return false;
+        _pendingForced = shortName;
+        return true;
+    }
+
+    /// <summary>Take + clear any queued forced round (called at round start before the chance roll).</summary>
+    public string? DequeueForced()
+    {
+        var p = _pendingForced;
+        _pendingForced = null;
+        return p;
+    }
 
     public IReadOnlyCollection<FunRoundDefinition> Registered => _rounds;
 

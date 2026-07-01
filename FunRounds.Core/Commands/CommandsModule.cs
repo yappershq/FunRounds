@@ -81,9 +81,15 @@ internal sealed class CommandsModule : IModule
 
         var reg = cc.GetRegistry("funrounds");
 
+        // Client chat commands (!funround / client console ms_funround).
         reg.RegisterClientCommand("funround",      OnFunRound);
         reg.RegisterClientCommand("funround_stop", OnFunRoundStop);
         reg.RegisterClientCommand("funrounds",     OnFunRounds);
+
+        // Server console / RCON commands (ms_funround … — trusted, no admin gate).
+        reg.RegisterServerCommand("funround",      OnFunRoundServer, "Force a fun round next round: funround <shortName>");
+        reg.RegisterServerCommand("funround_stop", OnFunRoundStopServer, "Cancel the active/queued fun round");
+        reg.RegisterServerCommand("funrounds",     OnFunRoundsServer, "List registered fun rounds");
     }
 
     public void Shutdown() { }
@@ -114,17 +120,17 @@ internal sealed class CommandsModule : IModule
         }
 
         var shortName = cmd.GetArg(1);
-        if (!_service.StartRound(shortName))
+        // Queue for NEXT round — a fun round applies its loadout at round_poststart, so it can't
+        // take effect mid-round; forcing always targets the next round.
+        if (!_service.QueueForced(shortName))
         {
             Loc.Chat(_bridge.LocalizerManager, client, "FunRounds_UnknownRound", shortName);
             return;
         }
 
-        var round = _service.Current!;
-        Loc.ChatAll(_bridge.LocalizerManager, _bridge.ClientManager,
-            "FunRounds_RoundSelected", round.Name);
-        _logger.LogInformation("[FunRounds] {Admin} started round '{Round}'.",
-            client.Name, round.Name);
+        Loc.Chat(_bridge.LocalizerManager, client, "FunRounds_RoundQueued", shortName);
+        _logger.LogInformation("[FunRounds] {Admin} queued round '{Round}' for next round.",
+            client.Name, shortName);
     }
 
     // ── !funround_stop ────────────────────────────────────────────────────
@@ -133,9 +139,44 @@ internal sealed class CommandsModule : IModule
     {
         if (Denied(client)) return;
 
+        _service.DequeueForced();
         _service.StopRound();
         Loc.Chat(_bridge.LocalizerManager, client, "FunRounds_Stopped");
         _logger.LogInformation("[FunRounds] {Admin} stopped the fun round.", client.Name);
+    }
+
+    // ── server console / RCON handlers (trusted context, no admin gate) ────
+
+    private void OnFunRoundServer(StringCommand cmd)
+    {
+        if (cmd.ArgCount < 1)
+        {
+            _logger.LogInformation("[FunRounds] Usage: funround <shortName>");
+            return;
+        }
+
+        var shortName = cmd.GetArg(1);
+        if (!_service.QueueForced(shortName))
+        {
+            _logger.LogWarning("[FunRounds] Unknown round '{Short}'.", shortName);
+            return;
+        }
+
+        _logger.LogInformation("[FunRounds] Console queued round '{Short}' for next round.", shortName);
+    }
+
+    private void OnFunRoundStopServer(StringCommand cmd)
+    {
+        _service.DequeueForced();
+        _service.StopRound();
+        _logger.LogInformation("[FunRounds] Console cancelled the fun round.");
+    }
+
+    private void OnFunRoundsServer(StringCommand cmd)
+    {
+        var rounds = _service.Registered;
+        _logger.LogInformation("[FunRounds] {Count} registered round(s): {List}",
+            rounds.Count, string.Join(", ", rounds.Select(r => r.ShortName)));
     }
 
     // ── !funrounds ────────────────────────────────────────────────────────
