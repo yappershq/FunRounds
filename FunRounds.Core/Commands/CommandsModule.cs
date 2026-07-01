@@ -6,6 +6,7 @@ using FunRounds.Plugins;
 using FunRounds.Rounds;
 using FunRounds.Utils;
 using Microsoft.Extensions.Logging;
+using AdminPanel.Shared;
 using Sharp.Modules.AdminManager.Shared;
 using Sharp.Modules.CommandCenter.Shared;
 using Sharp.Modules.MenuManager.Shared;
@@ -28,7 +29,10 @@ internal sealed class CommandsModule : IModule
     private readonly ConfigModule            _config;
     private readonly FunRoundService         _service;
 
-    private IAdminManager? _adminManager;
+    private const string AdminPanelActionId = "funrounds.force";
+
+    private IAdminManager?     _adminManager;
+    private IAdminPanelShared? _adminPanel;
 
     public CommandsModule(
         ILogger<CommandsModule> logger,
@@ -91,9 +95,58 @@ internal sealed class CommandsModule : IModule
         reg.RegisterServerCommand("funround",      OnFunRoundServer, "Force a fun round next round: funround <shortName>");
         reg.RegisterServerCommand("funround_stop", OnFunRoundStopServer, "Cancel the active/queued fun round");
         reg.RegisterServerCommand("funrounds",     OnFunRoundsServer, "List registered fun rounds");
+
+        RegisterAdminPanel();
     }
 
-    public void Shutdown() { }
+    public void Shutdown()
+    {
+        try { _adminPanel?.Unregister(AdminPanelActionId); }
+        catch (System.Exception ex) { _logger.LogError(ex, "[FunRounds] AdminPanel unregister failed."); }
+    }
+
+    // ── AdminPanel integration (!admin → Fun → Fun Rounds → pick) ──────────
+
+    private void RegisterAdminPanel()
+    {
+        _adminPanel = _bridge.SharpModuleManager
+            .GetOptionalSharpModuleInterface<IAdminPanelShared>(IAdminPanelShared.Identity)?.Instance;
+        if (_adminPanel is null) return; // AdminPanel not installed — chat/console commands still work.
+
+        try
+        {
+            _adminPanel.RegisterGlobalAction(new AdminPanelGlobalAction
+            {
+                Id         = AdminPanelActionId,
+                Label      = "Fun Rounds",
+                Category   = "Fun",
+                Permission = _config.Config.AdminFlag,
+                SortOrder  = 50,
+                SubMenu    = _ => BuildAdminPanelRounds(),
+            });
+            _logger.LogInformation("[FunRounds] AdminPanel integration registered.");
+        }
+        catch (System.Exception ex)
+        {
+            _logger.LogError(ex, "[FunRounds] AdminPanel register failed.");
+        }
+    }
+
+    private IReadOnlyList<AdminPanelMenuItem> BuildAdminPanelRounds()
+        => _service.Registered.Select(r =>
+        {
+            var shortName = r.ShortName; // capture per round
+            var name      = r.Name;
+            return new AdminPanelMenuItem
+            {
+                Label = name,
+                OnSelected = _ =>
+                {
+                    _service.QueueForced(shortName);
+                    _logger.LogInformation("[FunRounds] AdminPanel queued round '{Round}' for next round.", name);
+                },
+            };
+        }).ToList();
 
     // ── Admin gate ────────────────────────────────────────────────────────
 
