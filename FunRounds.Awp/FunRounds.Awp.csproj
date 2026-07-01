@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>FunRounds.Awp</AssemblyName>
+    <RootNamespace>FunRounds.Awp</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FunRounds.Shared\FunRounds.Shared.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="FunRounds.Shared/FunRounds.Shared.csproj" />
+  <Project Path="FunRounds.Core/FunRounds.Core.csproj" />
+  <Project Path="FunRounds.Awp/FunRounds.Awp.csproj" />
+</Solution>
