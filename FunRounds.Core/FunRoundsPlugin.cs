@@ -86,6 +86,8 @@ public sealed class FunRoundsPlugin : IModSharpModule
         // Resolve optional WeaponLimit integration.
         _bridge.WeaponLimit = _bridge.SharpModuleManager
             .GetOptionalSharpModuleInterface<IWeaponLimit>(IWeaponLimit.Identity)?.Instance;
+        _logger.LogInformation("[FunRounds] WeaponLimit integration: {State}.",
+            _bridge.WeaponLimit is null ? "NOT available (weapons may be stripped by a limiter)" : "active");
 
         foreach (var module in _provider.GetServices<IModule>())
             CallSafe(module, static m => m.OnAllSharpModulesLoaded(), "OnAllModulesLoaded");
