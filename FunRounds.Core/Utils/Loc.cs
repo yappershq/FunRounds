@@ -16,6 +16,13 @@ internal static class Loc
         => lm?.For(client).Localized(key, args).Prefix(null)
               .Transform(ChatFormat.ProcessColorCodes).Print(HudPrintChannel.Chat);
 
+    /// <summary>
+    /// Build a localized string for one client (no chat print) — for HUD/win-panel text.
+    /// Returns empty when the localizer is unavailable so callers can skip showing nothing.
+    /// </summary>
+    public static string Text(ILocalizerManager? lm, IGameClient client, string key, params object?[] args)
+        => lm is null ? string.Empty : lm.For(client).Localized(key, args).Prefix(null).Build();
+
     /// <summary>Localized chat line to every in-game human.</summary>
     public static void ChatAll(ILocalizerManager? lm, IClientManager clients, string key, params object?[] args)
     {

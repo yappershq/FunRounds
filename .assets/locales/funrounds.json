@@ -1,10 +1,29 @@
 {
-  "FunRounds_NoPermission":        { "en-US": "{{green}}[FunRounds]{{default}} You do not have permission to use this command." },
-  "FunRounds_RoundSelected":       { "en-US": "{{green}}[FunRounds]{{default}} Fun round active: {{green}}{0}{{default}}!" },
-  "FunRounds_Stopped":             { "en-US": "{{green}}[FunRounds]{{default}} Fun round stopped — normal play resumes next round." },
-  "FunRounds_Usage_FunRound":      { "en-US": "{{green}}[FunRounds]{{default}} Usage: !funround {{green}}<shortName>{{default}}" },
-  "FunRounds_UnknownRound":        { "en-US": "{{green}}[FunRounds]{{default}} Unknown round '{{red}}{0}{{default}}'. Use !funrounds to list registered rounds." },
-  "FunRounds_NoRoundsRegistered":  { "en-US": "{{green}}[FunRounds]{{default}} No rounds are registered yet." },
-  "FunRounds_List_Header":         { "en-US": "{{green}}[FunRounds]{{default}} {0} round(s) registered:" },
-  "FunRounds_List_Entry":          { "en-US": "  {{green}}{0}{{default}} — {1}" }
+  "FunRounds_NoPermission": {
+    "en-US": "{{green}}[FunRounds]{{default}} You do not have permission to use this command."
+  },
+  "FunRounds_RoundSelected": {
+    "en-US": "{{green}}[FunRounds]{{default}} Fun round active: {{green}}{0}{{default}}!"
+  },
+  "FunRounds_Stopped": {
+    "en-US": "{{green}}[FunRounds]{{default}} Fun round stopped — normal play resumes next round."
+  },
+  "FunRounds_Usage_FunRound": {
+    "en-US": "{{green}}[FunRounds]{{default}} Usage: !funround {{green}}<shortName>{{default}}"
+  },
+  "FunRounds_UnknownRound": {
+    "en-US": "{{green}}[FunRounds]{{default}} Unknown round '{{red}}{0}{{default}}'. Use !funrounds to list registered rounds."
+  },
+  "FunRounds_NoRoundsRegistered": {
+    "en-US": "{{green}}[FunRounds]{{default}} No rounds are registered yet."
+  },
+  "FunRounds_List_Header": {
+    "en-US": "{{green}}[FunRounds]{{default}} {0} round(s) registered:"
+  },
+  "FunRounds_List_Entry": {
+    "en-US": "  {{green}}{0}{{default}} — {1}"
+  },
+  "FunRounds_RoundReveal": {
+    "en-US": "⚡ FUN ROUND ⚡<br>{0}"
+  }
 }

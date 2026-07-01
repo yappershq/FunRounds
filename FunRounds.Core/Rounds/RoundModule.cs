@@ -179,10 +179,13 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
         _logger.LogInformation("[FunRounds] Applied '{Name}' to {Count} player(s).", round.Name, count);
 
         // Prominent win-panel reveal so players notice a fun round is live (self-hides after N s).
+        // Text is localized per-client (round.Name is the {0} arg); the panel colour is styling.
         if (_config.Config.AnnounceRound && count > 0)
         {
-            var html = WinPanel.Format($"⚡ FUN ROUND ⚡<br>{round.Name}", "#ffb400");
-            WinPanel.ShowTimed(_bridge, html, _config.Config.AnnounceSeconds);
+            var lm = _bridge.LocalizerManager;
+            WinPanel.ShowTimed(_bridge,
+                c => WinPanel.Format(Loc.Text(lm, c, "FunRounds_RoundReveal", round.Name), "#ffb400"),
+                _config.Config.AnnounceSeconds);
         }
 
         // Invoke optional code-round onApply delegate.

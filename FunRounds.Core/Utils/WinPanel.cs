@@ -1,6 +1,7 @@
 using System;
 using FunRounds;
 using Sharp.Shared.Enums;
+using Sharp.Shared.Objects;
 
 namespace FunRounds.Utils;
 
@@ -19,13 +20,19 @@ internal static class WinPanel
     public static string Format(string text, string color)
         => $"<font class='fontSize-xxl fontWeight-Bold stratum-bold-mono' color='{color}'>{text}</font><br><br><br><br><br><br>";
 
-    /// <summary>Show the win-panel HTML to every in-game player, then clear it after durationSeconds.</summary>
-    public static void ShowTimed(InterfaceBridge bridge, string html, int durationSeconds)
+    /// <summary>
+    /// Show the win-panel to every in-game player (HTML built per-client via <paramref name="htmlFor"/>
+    /// so text is localized in each player's language), then clear it after durationSeconds.
+    /// </summary>
+    public static void ShowTimed(InterfaceBridge bridge, Func<IGameClient, string> htmlFor, int durationSeconds)
     {
         foreach (var client in bridge.ClientManager.GetGameClients(inGame: true))
         {
             if (client.IsFakeClient || !client.IsInGame) continue;
             if (client.GetPlayerController() is not { } ctrl || !ctrl.IsValid()) continue;
+
+            var html = htmlFor(client);
+            if (string.IsNullOrEmpty(html)) continue;
 
             var e = bridge.EventManager.CreateEvent("cs_win_panel_round", true);
             if (e is null) continue;
