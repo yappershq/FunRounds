@@ -178,6 +178,13 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
 
         _logger.LogInformation("[FunRounds] Applied '{Name}' to {Count} player(s).", round.Name, count);
 
+        // Prominent win-panel reveal so players notice a fun round is live (self-hides after N s).
+        if (_config.Config.AnnounceRound && count > 0)
+        {
+            var html = WinPanel.Format($"⚡ FUN ROUND ⚡<br>{round.Name}", "#ffb400");
+            WinPanel.ShowTimed(_bridge, html, _config.Config.AnnounceSeconds);
+        }
+
         // Invoke optional code-round onApply delegate.
         var (onApply, _) = _service.GetCurrentCallbacks();
         if (onApply is not null)

@@ -22,6 +22,12 @@ public sealed class FunRoundsConfig
     public bool AnnounceRound { get; set; } = true;
 
     /// <summary>
+    /// How long (seconds) the prominent win-panel round reveal stays on screen before it's hidden.
+    /// Only used when <see cref="AnnounceRound"/> is true.
+    /// </summary>
+    public int AnnounceSeconds { get; set; } = 5;
+
+    /// <summary>
     /// The admin permission flag required to use <c>funround</c> / <c>funround_stop</c> commands.
     /// Supports any string recognized by IAdminManager (e.g. "@css/generic", "funrounds:manage").
     /// </summary>

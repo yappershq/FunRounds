@@ -48,7 +48,8 @@ Chat triggers: `!`, `/`, or `.`; console prefix `ms_`.
 | Key | Default | Meaning |
 |-----|---------|---------|
 | `FunRoundChance` | `15` | Percent chance (0–100) that a round becomes a random fun round. `0` = auto off (admins can still force one with `!funround`); `100` = every round. |
-| `AnnounceRound` | `true` | Broadcast the active round name to all players in chat when it starts. |
+| `AnnounceRound` | `true` | Announce the active round: a chat line + a prominent center **win-panel reveal** ("⚡ FUN ROUND ⚡ <name>") when it starts. |
+| `AnnounceSeconds` | `5` | How long the win-panel reveal stays on screen before it's hidden (`cs_win_panel_round` shown, then `round_freeze_end` clears it). |
 | `AdminFlag` | `"funrounds:manage"` | AdminManager permission flag required to use `!funround` / `!funround_stop`. |
 | `Rounds` | `[]` | Array of round definitions — see below. |
 
