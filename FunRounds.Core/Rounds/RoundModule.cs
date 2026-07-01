@@ -19,7 +19,8 @@ namespace FunRounds.Rounds;
 ///   OnRoundRestarted (IGameListener) — if auto-random, select a random fun round.
 ///   round_poststart  (IEventListener) — strip + arm + set health on every alive player.
 ///   round_end        (IEventListener) — clear Current for normal play.
-///   PlayerDispatchTraceAttack pre-hook — enforce HeadshotOnly / OneTap / NoScope damage rules.
+///   PlayerDispatchTraceAttack pre-hook — enforce HeadshotOnly / OneTap damage rules.
+///   GameFrame hook (pre) — force-unscope every alive player during a NoScope round, every tick.
 /// </summary>
 internal sealed class RoundModule : IModule, IEventListener, IGameListener
 {
@@ -32,6 +33,8 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
     private readonly Func<IPlayerDispatchTraceAttackHookParams,
                           HookReturnValue<long>,
                           HookReturnValue<long>> _traceAttackPre;
+
+    private readonly Action<bool, bool, bool> _gameFramePre;
 
     // ── IEventListener ────────────────────────────────────────────────────
     int IEventListener.ListenerVersion  => IEventListener.ApiVersion;
@@ -53,6 +56,7 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
         _service = service;
 
         _traceAttackPre = OnTraceAttackPre;
+        _gameFramePre   = OnGameFramePre;
     }
 
     // ── IModule lifecycle ──────────────────────────────────────────────────
@@ -67,6 +71,10 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
 
         _bridge.HookManager.PlayerDispatchTraceAttack.InstallHookPre(_traceAttackPre);
 
+        // Per-tick force-unscope while a NoScope round is active — installed for the
+        // lifetime of the plugin (cheap no-op check when no NoScope round is current).
+        _bridge.ModSharp.InstallGameFrameHook(_gameFramePre, null);
+
         _bridge.ModSharp.InstallGameListener(this);
     }
 
@@ -76,6 +84,7 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
     {
         _bridge.EventManager.RemoveEventListener(this);
         _bridge.HookManager.PlayerDispatchTraceAttack.RemoveHookPre(_traceAttackPre);
+        _bridge.ModSharp.RemoveGameFrameHook(_gameFramePre, null);
         _bridge.ModSharp.RemoveGameListener(this);
     }
 
@@ -173,30 +182,45 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
 
         var hitGroup = p.HitGroup;
 
-        // NoScope: zero damage when attacker is currently scoped
-        if (round.NoScope)
-        {
-            var attackerPawn = _bridge.EntityManager.FindEntityByHandle(p.AttackerPawnHandle);
-            if (attackerPawn is IPlayerPawn ap && ap.IsValid() && ap.GetNetVar<bool>("m_bIsScoped"))
-            {
-                p.Damage = 0f;
-                return new HookReturnValue<long>(EHookAction.Ignored);
-            }
-        }
-
         switch (round.DamageMode)
         {
-            // HeadshotOnly: suppress non-headshot damage
+            // HeadshotOnly: headshot REQUIRED — body/limb shots do zero damage.
             case DamageMode.HeadshotOnly when hitGroup != HitGroupType.Head:
                 p.Damage = 0f;
                 return new HookReturnValue<long>(EHookAction.Ignored);
 
-            // OneTap: make headshot lethal; body shots proceed normally
-            case DamageMode.OneTap when hitGroup == HitGroupType.Head:
+            // OneTap: ANY hitgroup is a guaranteed kill — one bullet, any location.
+            case DamageMode.OneTap:
                 p.Damage = 9999f;
                 return new HookReturnValue<long>(EHookAction.Ignored);
         }
 
         return current;
+    }
+
+    // ── NoScope enforcement (per-tick force-unscope) ────────────────────────
+
+    /// <summary>
+    /// Runs every server tick. When a NoScope round is active, forces every alive
+    /// player out of scope (m_bIsScoped = false) so zoom is unusable, not merely penalized.
+    /// </summary>
+    private void OnGameFramePre(bool simulating, bool firstTick, bool lastTick)
+    {
+        var round = _service.Current;
+        if (round is null || !round.NoScope) return;
+
+        foreach (var client in _bridge.ClientManager.GetGameClients(inGame: true))
+        {
+            if (client.IsFakeClient) continue;
+
+            var controller = client.GetPlayerController();
+            if (controller is not { } ctrl || !ctrl.IsValid()) continue;
+
+            var pawn = ctrl.GetPlayerPawn();
+            if (pawn is not { IsAlive: true } || !pawn.IsValid()) continue;
+
+            if (pawn.GetNetVar<bool>("m_bIsScoped"))
+                pawn.SetNetVar("m_bIsScoped", false);
+        }
     }
 }
