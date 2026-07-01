@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Sharp.Modules.LocalizerManager.Shared;
 using Sharp.Shared;
 using Sharp.Shared.Managers;
+using WeaponLimit.Shared;
 
 namespace FunRounds;
 
@@ -32,6 +33,11 @@ internal sealed class InterfaceBridge
     /// Optional localization service. Resolved in <c>OnAllModulesLoaded</c>; null when not installed.
     /// </summary>
     internal ILocalizerManager? LocalizerManager { get; set; }
+
+    /// <summary>
+    /// Optional WeaponLimit integration. Resolved in <c>OnAllModulesLoaded</c>; null when WeaponLimit is not installed.
+    /// </summary>
+    internal IWeaponLimit? WeaponLimit { get; set; }
 
     public InterfaceBridge(IModSharpModule module, ISharedSystem sharedSystem, string sharpPath, ILoggerFactory loggerFactory)
     {

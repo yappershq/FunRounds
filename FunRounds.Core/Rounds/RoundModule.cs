@@ -39,6 +39,9 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
 
     private readonly Action<bool, bool, bool> _gameFramePre;
 
+    // WeaponLimit override tracking — true when we called SetOverride this round.
+    private bool _wlOverridden;
+
     // ── IEventListener ────────────────────────────────────────────────────
     int IEventListener.ListenerVersion  => IEventListener.ApiVersion;
     int IEventListener.ListenerPriority => 0;
@@ -108,6 +111,7 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
             _logger.LogInformation("[FunRounds] Forced fun round: '{Name}'.", f.Name);
             if (_config.Config.AnnounceRound)
                 Loc.ChatAll(_bridge.LocalizerManager, _bridge.ClientManager, "FunRounds_RoundSelected", f.Name);
+            SetWeaponLimitOverride(f);
             return;
         }
 
@@ -126,6 +130,19 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
             Loc.ChatAll(_bridge.LocalizerManager, _bridge.ClientManager,
                 "FunRounds_RoundSelected", pick.Name);
         }
+
+        SetWeaponLimitOverride(pick);
+    }
+
+    /// <summary>
+    /// Tells WeaponLimit to enforce the fun-round weapon set instead of its config set.
+    /// PlayerSpawnPost fires after OnRoundRestarted, so suspending here is the correct timing.
+    /// </summary>
+    private void SetWeaponLimitOverride(FunRoundDefinition round)
+    {
+        if (_wlOverridden || _bridge.WeaponLimit is not { } wl) return;
+        wl.SetOverride(round.GetWeapons());
+        _wlOverridden = true;
     }
 
     // ── IEventListener — FireGameEvent ────────────────────────────────────
@@ -140,6 +157,13 @@ internal sealed class RoundModule : IModule, IEventListener, IGameListener
 
             case "round_end":
                 InvokeRevert();
+                // Revert WeaponLimit to config-defined set BEFORE stopping the round
+                // so it goes into effect on the next spawn cycle.
+                if (_wlOverridden)
+                {
+                    _bridge.WeaponLimit?.ClearOverride();
+                    _wlOverridden = false;
+                }
                 // Always clear Current — the next round rolls fresh in OnRoundRestarted, so
                 // without this a fun round would persist into the following (normal) round.
                 _service.StopRound();

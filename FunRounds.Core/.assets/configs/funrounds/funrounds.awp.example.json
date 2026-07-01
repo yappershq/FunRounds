@@ -15,7 +15,7 @@
       "DamageMode": "Any",
       "NoScope": true,
       "Health": 100,
-      "Weight": 2
+      "Weight": 5
     },
     {
       "Name": "Scout",
@@ -29,7 +29,7 @@
       "DamageMode": "Any",
       "NoScope": false,
       "Health": 100,
-      "Weight": 2
+      "Weight": 1
     },
     {
       "Name": "Scout HeadShot",

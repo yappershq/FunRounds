@@ -13,5 +13,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FunRounds.Shared\FunRounds.Shared.csproj" />
+    <!-- WeaponLimit.Shared lives in a separate repo. Private=false: don't copy the dll;
+         it is shipped separately as WeaponLimit's shared/ contract on the server. -->
+    <ProjectReference Include="/home/claude/cs2-weaponlimit/WeaponLimit.Shared/WeaponLimit.Shared.csproj" Private="false" />
   </ItemGroup>
 </Project>

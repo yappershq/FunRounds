@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Sharp.Modules.LocalizerManager.Shared;
 using Sharp.Shared;
+using WeaponLimit.Shared;
 
 namespace FunRounds;
 
@@ -78,6 +79,10 @@ public sealed class FunRoundsPlugin : IModSharpModule
         _bridge.LocalizerManager = _bridge.SharpModuleManager
             .GetOptionalSharpModuleInterface<ILocalizerManager>(ILocalizerManager.Identity)?.Instance;
         LoadLocaleFiles();
+
+        // Resolve optional WeaponLimit integration.
+        _bridge.WeaponLimit = _bridge.SharpModuleManager
+            .GetOptionalSharpModuleInterface<IWeaponLimit>(IWeaponLimit.Identity)?.Instance;
 
         foreach (var module in _provider.GetServices<IModule>())
             CallSafe(module, static m => m.OnAllSharpModulesLoaded(), "OnAllModulesLoaded");
